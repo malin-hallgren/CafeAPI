@@ -177,6 +177,12 @@ namespace CafeAPI
                 return category;
             });
 
+            app.MapGet("/produkter/kategorier/{categoryId}", (int categoryId) =>
+            {
+                var produkterIKategori = cafeMeny.Where(p => p.Category != null && p.Category.Id == categoryId).ToList();
+                return produkterIKategori;
+            });
+
             app.Run();
         }
     }
