@@ -103,6 +103,38 @@ namespace CafeAPI
     }
 };
 
+            // Put Products
+
+            app.MapPut("/produkter/{id}", (int id, Product P ) =>
+            {
+                var produkt = cafeMeny.Find(p => p.Id == id);
+                if (produkt == null)
+                {
+                    return Results.NotFound();
+                }
+                produkt.Name = P.Name;
+                produkt.Description = P.Description;
+                produkt.Price = P.Price;
+                produkt.Category = P.Category;
+                return Results.Ok(produkt);
+
+            });
+           //GET all categories
+
+            app.MapGet("/kategorier", () =>
+            {
+                var categories = new List<Category> { kaffeKategori, bakverkKategori, teKategori };
+                return Results.Ok(categories);
+            });
+            //Get catagory by id
+
+            app.MapGet("kategorier/{id}", (int id) =>
+            {
+               
+
+            })
+            //post categories
+
             app.Run();
         }
     }
