@@ -22,6 +22,8 @@ namespace CafeAPI
                 options.UseSqlServer(builder.Configuration.GetConnectionString("CafeDatabase"));
             });
 
+            var context = new CafeAPIDbContext(
+                builder.Services.BuildServiceProvider().GetRequiredService<DbContextOptions<CafeAPIDbContext>>());
 
             var app = builder.Build();
 
@@ -36,23 +38,21 @@ namespace CafeAPI
             app.UseAuthorization();
 
             // Skapa kategorier
-            var kaffeKategori = new Category { Id = 1, Name = "Kaffe" };
-            var bakverkKategori = new Category { Id = 2, Name = "Bakverk" };
-            var teKategori = new Category { Id = 3, Name = "Te" };
 
-            List<Category> kategorier = new List<Category>
+            if (context.Categories.ToList().Count < 1)
             {
-                kaffeKategori,
-                bakverkKategori,
-                teKategori
-            };
+                var kaffeKategori = new Category { Name = "Kaffe" };
+                var bakverkKategori = new Category { Name = "Bakverk" };
+                var teKategori = new Category { Name = "Te" };
 
-            // Skapa listan med produkter
-            List<Product> cafeMeny = new List<Product>
+                context.Categories.Add(kaffeKategori);
+                context.Categories.Add(bakverkKategori);
+                context.Categories.Add(teKategori);
+
+                List<Product> cafeMeny = new List<Product>
             {
                 new Product
                 {
-                    Id = 1,
                     Name = "Espresso",
                     Description = "En intensiv och fyllig liten kopp kaffe.",
                     Price = 25.00m,
@@ -60,7 +60,6 @@ namespace CafeAPI
                 },
                 new Product
                 {
-                    Id = 2,
                     Name = "Macchiato",
                     Description = "Espresso med en fläck av skummat mjölk.",
                     Price = 32.00m,
@@ -68,7 +67,6 @@ namespace CafeAPI
                 },
                 new Product
                 {
-                    Id = 3,
                     Name = "Caffè Latte",
                     Description = "Klassisk kaffe med mycket mjölk.",
                     Price = 45.00m,
@@ -76,7 +74,6 @@ namespace CafeAPI
                 },
                 new Product
                 {
-                    Id = 4,
                     Name = "Kanelbulle",
                     Description = "Hembakad bulle med massor av kanel och socker.",
                     Price = 35.00m,
@@ -84,17 +81,15 @@ namespace CafeAPI
                 },
                 new Product
                 {
-                    Id = 5,
                     Name = "Chokladboll",
                     Description = "Klassisk svensk chokladboll rullad i pärlsocker.",
                     Price = 20.00m,
                     Category = bakverkKategori
                 },
-           
+
                 // Teprodukter (Nya)
                 new Product
                 {
-                    Id = 6,
                     Name = "Earl Grey",
                     Description = "Klassiskt svart te smaksatt med bergamott.",
                     Price = 28.00m,
@@ -102,7 +97,6 @@ namespace CafeAPI
                 },
                 new Product
                 {
-                    Id = 7,
                     Name = "Grönt te (Sencha)",
                     Description = "Friskt japanskt grönt te.",
                     Price = 30.00m,
@@ -110,7 +104,6 @@ namespace CafeAPI
                 },
                 new Product
                 {
-                    Id = 8,
                     Name = "Chai Latte",
                     Description = "Kryddigt te med ångad mjölk och honung.",
                     Price = 42.00m,
@@ -118,59 +111,120 @@ namespace CafeAPI
                 }
             };
 
+                context.Products.AddRange(cafeMeny);
+            }
+            
+
+            //List<Category> kategorier = new List<Category>
+            //{
+            //    kaffeKategori,
+            //    bakverkKategori,
+            //    teKategori
+            //};
+
+            // Skapa listan med produkter
+            
+
+            context.SaveChanges();
+
             app.MapGet("/produkter", () =>
             {
-                return cafeMeny;
+                return context.Products.Include(p => p.Category).ToList(); ;
             });
 
             app.MapPost("/produkter", (Product product) =>
             {
-                product.Id = cafeMeny.Any() ? cafeMeny.Max(p => p.Id) + 1 : 1;
-                cafeMeny.Add(product);
+                var cafeMeny = context.Products.ToList();
+                //product.Id = cafeMeny.Any() ? cafeMeny.Max(p => p.Id) + 1 : 1;
+
+                if (product.Category != null)
+                {
+                    // If category has an Id, use it to find the existing category
+                    if (product.Category.Id > 0)
+                    {
+                        var existingCategory = context.Categories.FirstOrDefault(c => c.Id == product.Category.Id);
+                        if (existingCategory != null)
+                        {
+                            product.Category = existingCategory;
+                        }
+                    }
+                    // If category has a Name but no Id, find by name
+                    else if (!string.IsNullOrEmpty(product.Category.Name))
+                    {
+                        var existingCategory = context.Categories.FirstOrDefault(c => c.Name == product.Category.Name);
+                        if (existingCategory != null)
+                        {
+                            product.Category = existingCategory;
+                        }
+                    }
+                }
+
+                context.Products.Add(product);
+                context.SaveChanges();
                 return product;
             });
 
             app.MapDelete("/produkter/{id}", (int id) =>
             {
-                var product = cafeMeny.FirstOrDefault(p => p.Id == id);
-                if (product != null)
+                //var cafeMeny = context.Products.Include(p => p.Category).ToList();
+                var product = context.Products.FirstOrDefault(p => p.Id == id);
+                if (product == null)
                 {
-                    cafeMeny.Remove(product);
-                    return Results.Ok();
+                    return Results.NotFound();
                 }
-                return Results.NotFound();
+
+                context.Products.Remove(product);
+                context.SaveChanges();
+                return Results.Ok();
             });
 
    
 
             app.MapPut("/produkter/{id}", (int id, Product P ) =>
             {
-                var produkt = cafeMeny.Find(p => p.Id == id);
-                if (produkt == null)
+                var product = context.Products.Include(p => p.Category).FirstOrDefault(p => p.Id == id);
+                if (product == null)
                 {
                     return Results.NotFound();
                 }
-                produkt.Name = P.Name;
-                produkt.Description = P.Description;
-                produkt.Price = P.Price;
-                produkt.Category = P.Category;
-                return Results.Ok(produkt);
+                
+                product.Name = P.Name;
+                product.Description = P.Description;
+                product.Price = P.Price;
+
+                if (P.Category != null && P.Category.Id > 0)
+                {
+                    var trackedCategory = context.Categories.Local.FirstOrDefault(c => c.Id == P.Category.Id);
+                    if (trackedCategory == null)
+                    {
+                        context.Attach(P.Category);
+                        product.Category = P.Category;
+                    }
+                    else
+                    {
+                        product.Category = trackedCategory;
+                    }
+                }
+                
+                context.SaveChanges();
+                return Results.Ok(product);
 
             });
          
 
             app.MapGet("/kategorier", () =>
             {
-                return kategorier;
+                return context.Categories.ToList();
             });
          
 
             app.MapGet("kategorier/{id}", (int id) =>
             {
-                 var kategori = kategorier.FirstOrDefault(p => p.Id == id);
+                var kategorier = context.Categories.ToList();
+                var kategori = kategorier.FirstOrDefault(p => p.Id == id);
                 if (kategori != null)
                 {
-                  
+                    context.SaveChanges();
                     return Results.Ok(kategori);
                 }
                 return Results.NotFound();
@@ -180,14 +234,19 @@ namespace CafeAPI
 
             app.MapPost("/kategorier", (Category category) =>
             {
-                category.Id = kategorier.Any() ? kategorier.Max(p => p.Id) + 1 : 1;
-                kategorier.Add(category);
+                var kategorier = context.Categories.ToList();
+                //category.Id = kategorier.Any() ? kategorier.Max(p => p.Id) + 1 : 1;
+                context.Categories.Add(category);
+
+                context.SaveChanges();
                 return category;
             });
 
             app.MapGet("/produkter/kategorier/{categoryId}", (int categoryId) =>
             {
+                var cafeMeny = context.Products.Include(p => p.Category).ToList();
                 var produkterIKategori = cafeMeny.Where(p => p.Category != null && p.Category.Id == categoryId).ToList();
+                context.SaveChanges();
                 return produkterIKategori;
             });
 
