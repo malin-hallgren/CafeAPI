@@ -1,4 +1,4 @@
-﻿namespace CafeAPI
+﻿namespace CafeAPI.Models
 {
     public class Category
     {
