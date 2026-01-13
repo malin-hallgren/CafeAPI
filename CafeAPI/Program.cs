@@ -32,6 +32,13 @@ namespace CafeAPI
             var bakverkKategori = new Category { Id = 2, Name = "Bakverk" };
             var teKategori = new Category { Id = 3, Name = "Te" };
 
+            List<Category> kategorier = new List<Category>
+            {
+                kaffeKategori,
+                bakverkKategori,
+                teKategori
+            };
+
             // Skapa listan med produkter
             List<Product> cafeMeny = new List<Product>
             {
@@ -126,7 +133,7 @@ namespace CafeAPI
                 return Results.NotFound();
             });
 
-            // Put Products
+   
 
             app.MapPut("/produkter/{id}", (int id, Product P ) =>
             {
@@ -142,21 +149,33 @@ namespace CafeAPI
                 return Results.Ok(produkt);
 
             });
-           //GET all categories
+         
 
             app.MapGet("/kategorier", () =>
             {
-                var categories = new List<Category> { kaffeKategori, bakverkKategori, teKategori };
-                return Results.Ok(categories);
+                return kategorier;
             });
-            //Get catagory by id
+         
 
             app.MapGet("kategorier/{id}", (int id) =>
             {
-               
+                 var kategori = kategorier.FirstOrDefault(p => p.Id == id);
+                if (kategori != null)
+                {
+                  
+                    return Results.Ok(kategori);
+                }
+                return Results.NotFound();
 
-            })
-            //post categories
+            });
+        
+
+            app.MapPost("/kategorier", (Category category) =>
+            {
+                category.Id = kategorier.Any() ? kategorier.Max(p => p.Id) + 1 : 1;
+                kategorier.Add(category);
+                return category;
+            });
 
             app.Run();
         }
