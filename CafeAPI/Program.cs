@@ -1,5 +1,5 @@
-
-using System.Collections.Generic;
+using CafeAPI.Models;
+using CafeAPI.Data;
 
 namespace CafeAPI
 {
