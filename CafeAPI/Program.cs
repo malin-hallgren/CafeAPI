@@ -1,5 +1,7 @@
-using CafeAPI.Models;
 using CafeAPI.Data;
+using CafeAPI.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace CafeAPI
 {
@@ -14,6 +16,12 @@ namespace CafeAPI
 
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+
+            builder.Services.AddDbContext<CafeAPIDbContext>(options =>
+            {
+                options.UseSqlServer(builder.Configuration.GetConnectionString("CafeDatabase"));
+            });
+
 
             var app = builder.Build();
 
